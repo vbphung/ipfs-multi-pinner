@@ -14,7 +14,6 @@ import (
 	"github.com/ipfs/kubo/client/rpc"
 	iface "github.com/ipfs/kubo/core/coreiface"
 	"github.com/ipfs/kubo/core/coreiface/options"
-	"github.com/multiformats/go-multihash"
 )
 
 type CID struct {
@@ -74,12 +73,12 @@ func (c *clt) Add(ctx context.Context, r io.Reader) (*CID, error) {
 }
 
 func (c *clt) Get(ctx context.Context, req *CID) (io.Reader, error) {
-	mh, err := multihash.FromB58String(req.Hash)
+	cid, err := cid.Decode(req.Hash)
 	if err != nil {
 		return nil, err
 	}
 
-	nd, err := c.api.Unixfs().Get(ctx, path.FromCid(cid.NewCidV0(mh)))
+	nd, err := c.api.Unixfs().Get(ctx, path.FromCid(cid))
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +112,7 @@ func (c *clt) ListCID(ctx context.Context) (<-chan *CID, error) {
 }
 
 func (c *clt) Pin(ctx context.Context, req *CID) error {
-	mh, err := multihash.FromB58String(req.Hash)
+	cid, err := cid.Decode(req.Hash)
 	if err != nil {
 		return err
 	}
@@ -126,5 +125,5 @@ func (c *clt) Pin(ctx context.Context, req *CID) error {
 		}
 	}(ctx, req)
 
-	return c.api.Pin().Add(ctx, path.FromCid(cid.NewCidV0(mh)))
+	return c.api.Pin().Add(ctx, path.FromCid(cid))
 }

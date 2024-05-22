@@ -65,5 +65,7 @@ func TestAllV1(t *testing.T) {
 		cids = append(cids, cid.Hash)
 	}
 
+	fmt.Println(len(cids), cids)
+
 	require.Contains(t, cids, added.Hash)
 }
