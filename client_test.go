@@ -24,4 +24,14 @@ func TestAll(t *testing.T) {
 	added, err := clt.Add(ctx, r)
 	require.NoError(t, err)
 	fmt.Println(added.Hash)
+
+	ls, err := clt.ListCID(ctx)
+	require.NoError(t, err)
+
+	var cids []string
+	for cid := range ls {
+		cids = append(cids, cid.Hash)
+	}
+
+	require.Contains(t, cids, added.Hash)
 }

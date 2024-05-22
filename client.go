@@ -49,6 +49,7 @@ func (c *clt) Add(ctx context.Context, r io.Reader) (*CID, error) {
 
 	added, err := c.api.Unixfs().Add(ctx, files.NewReaderFile(add), func(uas *options.UnixfsAddSettings) error {
 		uas.CidVersion = c.conf.CIDVersion
+		uas.Pin = true
 		return nil
 	})
 	if err != nil {
