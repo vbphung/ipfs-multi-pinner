@@ -3,6 +3,7 @@ package easipfs
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -44,14 +45,27 @@ func NewClient(conf *Config, pns []PinningService) (Client, error) {
 
 func (c *clt) Add(ctx context.Context, r io.Reader) (*CID, error) {
 	buf := bufio.NewReader(r)
+	add, reuse := teeIoReader(buf)
 
-	added, err := c.api.Unixfs().Add(ctx, files.NewReaderFile(buf), func(uas *options.UnixfsAddSettings) error {
+	added, err := c.api.Unixfs().Add(ctx, files.NewReaderFile(add), func(uas *options.UnixfsAddSettings) error {
 		uas.CidVersion = c.conf.CIDVersion
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
+	go func(ctx context.Context, r io.Reader) {
+		cur := r
+		for _, pn := range c.pns {
+			now, next := teeIoReader(cur)
+			cur = next
+
+			if _, err := pn.Add(ctx, now); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}(ctx, reuse)
 
 	return &CID{
 		Hash: added.RootCid().String(),
@@ -102,6 +116,14 @@ func (c *clt) Pin(ctx context.Context, req *CID) error {
 	if err != nil {
 		return err
 	}
+
+	go func(ctx context.Context, req *CID) {
+		for _, pn := range c.pns {
+			if err := pn.Pin(ctx, req); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}(ctx, req)
 
 	return c.api.Pin().Add(ctx, path.FromCid(cid.NewCidV0(mh)))
 }
