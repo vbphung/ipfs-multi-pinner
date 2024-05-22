@@ -34,7 +34,7 @@ type clt struct {
 	conf *Config
 }
 
-func NewClient(conf *Config, pns []PinningService) (Client, error) {
+func NewClient(conf *Config, pns ...PinningService) (Client, error) {
 	api, err := rpc.NewURLApiWithClient(conf.IpfsUrl, &http.Client{})
 	if err != nil {
 		return nil, err
