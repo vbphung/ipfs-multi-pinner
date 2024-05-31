@@ -3,7 +3,6 @@ package easipfs
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/ipfs/kubo/client/rpc"
 	iface "github.com/ipfs/kubo/core/coreiface"
 	"github.com/ipfs/kubo/core/coreiface/options"
+	"github.com/sirupsen/logrus"
 )
 
 type CID struct {
@@ -31,6 +31,7 @@ type clt struct {
 	api  *rpc.HttpApi
 	pns  []PinningService
 	conf *Config
+	log  *logrus.Logger
 }
 
 func NewClient(conf *Config, pns ...PinningService) (Client, error) {
@@ -39,7 +40,13 @@ func NewClient(conf *Config, pns ...PinningService) (Client, error) {
 		return nil, err
 	}
 
-	return &clt{api, pns, conf}, nil
+	log := logrus.New()
+	log.SetFormatter(&logrus.TextFormatter{
+		ForceColors:   true,
+		FullTimestamp: true,
+	})
+
+	return &clt{api, pns, conf, log}, nil
 }
 
 func (c *clt) Add(ctx context.Context, r io.Reader) (*CID, error) {
@@ -61,8 +68,10 @@ func (c *clt) Add(ctx context.Context, r io.Reader) (*CID, error) {
 			now, next := teeIoReader(cur)
 			cur = next
 
-			if _, err := pn.Add(ctx, now); err != nil {
-				fmt.Println(err)
+			if resp, err := pn.Add(ctx, now); err != nil {
+				c.log.Errorln(pn.Name(), err)
+			} else {
+				c.log.Infoln(pn.Name(), resp.Hash)
 			}
 		}
 	}(ctx, reuse)
@@ -120,7 +129,9 @@ func (c *clt) Pin(ctx context.Context, req *CID) error {
 	go func(ctx context.Context, req *CID) {
 		for _, pn := range c.pns {
 			if err := pn.Pin(ctx, req); err != nil {
-				fmt.Println(err)
+				c.log.Errorln(pn.Name(), err)
+			} else {
+				c.log.Infoln(pn.Name(), req.Hash)
 			}
 		}
 	}(ctx, req)
