@@ -29,7 +29,7 @@ type Client interface {
 
 type clt struct {
 	api  *rpc.HttpApi
-	pns  []PinningService
+	pnm  *pinningManager
 	conf *Config
 	log  *logrus.Logger
 }
@@ -46,7 +46,10 @@ func NewClient(conf *Config, pns ...PinningService) (Client, error) {
 		FullTimestamp: true,
 	})
 
-	return &clt{api, pns, conf, log}, nil
+	pnm := newPinningManager(log, pns...)
+	pnm.do()
+
+	return &clt{api, pnm, conf, log}, nil
 }
 
 func (c *clt) Add(ctx context.Context, r io.Reader) (*CID, error) {
@@ -62,19 +65,7 @@ func (c *clt) Add(ctx context.Context, r io.Reader) (*CID, error) {
 		return nil, err
 	}
 
-	go func(ctx context.Context, r io.Reader) {
-		cur := r
-		for _, pn := range c.pns {
-			now, next := teeIoReader(cur)
-			cur = next
-
-			if resp, err := pn.Add(ctx, now); err != nil {
-				c.log.Errorln(pn.Name(), err)
-			} else {
-				c.log.Infoln(pn.Name(), resp.Hash)
-			}
-		}
-	}(ctx, reuse)
+	c.pnm.add(reuse)
 
 	return &CID{
 		Hash: added.RootCid().String(),
@@ -126,15 +117,9 @@ func (c *clt) Pin(ctx context.Context, req *CID) error {
 		return err
 	}
 
-	go func(ctx context.Context, req *CID) {
-		for _, pn := range c.pns {
-			if err := pn.Pin(ctx, req); err != nil {
-				c.log.Errorln(pn.Name(), err)
-			} else {
-				c.log.Infoln(pn.Name(), req.Hash)
-			}
-		}
-	}(ctx, req)
+	c.pnm.pin(&CID{
+		Hash: cid.String(),
+	})
 
 	return c.api.Pin().Add(ctx, path.FromCid(cid))
 }
