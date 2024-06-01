@@ -7,7 +7,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const actionQueueSize = 100
+const (
+	actionQueueSize     = 100
+	defaultMaxReqAtOnce = 3
+)
 
 type action struct {
 	pin *CID
@@ -15,8 +18,9 @@ type action struct {
 }
 
 type actionQueue struct {
-	pn PinningService
-	ch chan *action
+	pn     PinningService
+	ch     chan *action
+	splits int
 }
 
 type pinningManager struct {
@@ -28,8 +32,9 @@ func newPinningManager(log *logrus.Logger, pns ...PinningService) *pinningManage
 	queues := make([]*actionQueue, len(pns))
 	for i, pn := range pns {
 		queues[i] = &actionQueue{
-			pn: pn,
-			ch: make(chan *action, actionQueueSize),
+			pn:     pn,
+			ch:     make(chan *action, actionQueueSize),
+			splits: defaultMaxReqAtOnce,
 		}
 	}
 
@@ -62,12 +67,19 @@ func (m *pinningManager) pin(cid *CID) {
 
 func (m *pinningManager) do() {
 	for _, q := range m.pns {
-		go q.do(m.log)
+		for i := 0; i < q.splits; i++ {
+			go q.do(m.log)
+		}
 	}
 }
 
 func (q *actionQueue) do(log *logrus.Logger) {
-	for act := range q.ch {
+	for {
+		act, ok := <-q.ch
+		if !ok {
+			return
+		}
+
 		if act.add != nil {
 			cid, err := q.pn.Add(context.Background(), act.add)
 			if err != nil {
