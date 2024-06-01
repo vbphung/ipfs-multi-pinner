@@ -7,6 +7,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const actionQueueSize = 100
+
 type action struct {
 	pin *CID
 	add io.Reader
@@ -27,7 +29,7 @@ func newPinningManager(log *logrus.Logger, pns ...PinningService) *pinningManage
 	for i, pn := range pns {
 		queues[i] = &actionQueue{
 			pn: pn,
-			ch: make(chan *action),
+			ch: make(chan *action, actionQueueSize),
 		}
 	}
 
