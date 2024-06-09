@@ -2,6 +2,7 @@ package queue
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -13,37 +14,31 @@ type Msg[T any] struct {
 	cons  uint32
 }
 
-type Queue[T any] interface {
-	Pub(msg T, cons uint32)
-	Sub() (*Consumer[T], error)
-	Ack(consID string) error
-}
-
-type queue[T any] struct {
+type Queue[T any] struct {
 	cons map[string]*Consumer[T]
 	msgs map[uint64]*Msg[T]
 	h    uint64
 	mu   sync.Mutex
 }
 
-func New[T any]() Queue[T] {
-	return &queue[T]{
+func New[T any]() *Queue[T] {
+	return &Queue[T]{
 		cons: make(map[string]*Consumer[T]),
 		msgs: make(map[uint64]*Msg[T]),
-		h:    1,
+		h:    0,
 	}
 }
 
-func (q *queue[T]) Pub(event T, cons uint32) {
+func (q *Queue[T]) Pub(event T) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	q.h++
-	q.msgs[q.h] = &Msg[T]{event, cons}
+	q.msgs[q.h] = &Msg[T]{event, uint32(len(q.cons))}
 
 	for _, cons := range q.cons {
 		if cons.status == consWait {
-			cons.Sub <- q.msgs[q.h]
+			cons.ch <- q.msgs[q.h]
 			cons.status = consBusy
 
 			return
@@ -51,24 +46,25 @@ func (q *queue[T]) Pub(event T, cons uint32) {
 	}
 }
 
-func (q *queue[T]) Sub() (*Consumer[T], error) {
+func (q *Queue[T]) Sub() (*Consumer[T], error) {
 	consID, err := uuid.NewV6()
 	if err != nil {
 		return nil, err
 	}
 
 	cons := &Consumer[T]{
-		ID:     consID.String(),
-		Sub:    make(chan *Msg[T]),
-		offset: 1,
+		consID: consID.String(),
+		ch:     make(chan *Msg[T]),
+		offset: 0,
 		status: consWait,
+		q:      q,
 	}
 
-	q.cons[cons.ID] = cons
+	q.cons[cons.consID] = cons
 
-	err = q.subNext(cons.ID)
+	err = q.subNext(cons.consID)
 	if err != nil {
-		delete(q.cons, cons.ID)
+		delete(q.cons, cons.consID)
 
 		return nil, err
 	}
@@ -76,7 +72,7 @@ func (q *queue[T]) Sub() (*Consumer[T], error) {
 	return cons, nil
 }
 
-func (q *queue[T]) Ack(consID string) error {
+func (q *Queue[T]) ack(consID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -90,17 +86,18 @@ func (q *queue[T]) Ack(consID string) error {
 		return err
 	}
 
-	cons.offset++
+	cons.incOffset()
 
-	err = q.subNext(consID)
-	if err != nil {
-		return err
-	}
+	go func() {
+		if err = q.subNext(consID); err != nil {
+			fmt.Println(err)
+		}
+	}()
 
 	return nil
 }
 
-func (q *queue[T]) subNext(consID string) error {
+func (q *Queue[T]) subNext(consID string) error {
 	cons, ok := q.cons[consID]
 	if !ok {
 		return errors.New(consID)
@@ -108,19 +105,16 @@ func (q *queue[T]) subNext(consID string) error {
 
 	for i := cons.offset + 1; i < q.h; i++ {
 		if msg, ok := q.msgs[i]; ok {
-			cons.Sub <- msg
-			cons.status = consBusy
+			cons.sub(msg)
 
 			return nil
 		}
 	}
 
-	cons.status = consWait
-
 	return nil
 }
 
-func (q *queue[T]) onConsAck(offset uint64) error {
+func (q *Queue[T]) onConsAck(offset uint64) error {
 	msg, ok := q.msgs[offset]
 	if !ok {
 		return errors.New(strconv.FormatUint(offset, 10))

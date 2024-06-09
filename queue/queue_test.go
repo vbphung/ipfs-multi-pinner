@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,17 +17,17 @@ func TestMain(t *testing.T) {
 
 	go func(cons *Consumer[int]) {
 		for {
-			msg := <-cons.Sub
+			msg := <-cons.Sub()
 
 			time.Sleep(500 * time.Millisecond)
 			fmt.Println(msg.event)
 
-			q.Ack(cons.ID)
+			assert.NoError(t, cons.Ack())
 		}
 	}(cons)
 
 	for i := 0; i < 100; i++ {
-		q.Pub(i, 1)
+		q.Pub(i)
 	}
 
 	time.Sleep(3 * time.Second)
