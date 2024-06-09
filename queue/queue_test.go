@@ -4,34 +4,30 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(t *testing.T) {
 	q := New[int]()
 
-	done := make(chan struct{})
-	go func() {
-		offset := uint64(0)
+	cons, err := q.Sub()
+	require.NoError(t, err)
+
+	go func(cons *Consumer[int]) {
 		for {
-			next := q.Sub(offset)
-			if next != nil {
-				fmt.Println(next.event)
-				offset++
+			msg := <-cons.Sub
 
-				if offset == 100 {
-					done <- struct{}{}
-					return
-				}
+			time.Sleep(500 * time.Millisecond)
+			fmt.Println(msg.event)
 
-				time.Sleep(1 * time.Second)
-			}
+			q.Ack(cons.ID)
 		}
-	}()
+	}(cons)
 
 	for i := 0; i < 100; i++ {
 		q.Pub(i, 1)
 	}
 
-	<-done
-	close(done)
+	time.Sleep(3 * time.Second)
 }
