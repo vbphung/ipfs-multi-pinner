@@ -1,16 +1,16 @@
 package queue
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMain(t *testing.T) {
-	q := New[int]()
+	q := New[int](logrus.New())
 
 	cons, err := q.Sub()
 	require.NoError(t, err)
@@ -20,7 +20,7 @@ func TestMain(t *testing.T) {
 			msg := <-cons.Sub()
 
 			time.Sleep(500 * time.Millisecond)
-			fmt.Println(msg.event)
+			q.log.Println(msg)
 
 			assert.NoError(t, cons.Ack())
 		}

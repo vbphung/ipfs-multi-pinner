@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type Msg[T any] struct {
@@ -19,13 +20,15 @@ type Queue[T any] struct {
 	msgs map[uint64]*Msg[T]
 	h    uint64
 	mu   sync.Mutex
+	log  *logrus.Logger
 }
 
-func New[T any]() *Queue[T] {
+func New[T any](log *logrus.Logger) *Queue[T] {
 	return &Queue[T]{
 		cons: make(map[string]*Consumer[T]),
 		msgs: make(map[uint64]*Msg[T]),
 		h:    0,
+		log:  log,
 	}
 }
 
@@ -38,8 +41,7 @@ func (q *Queue[T]) Pub(event T) {
 
 	for _, cons := range q.cons {
 		if cons.status == consWait {
-			cons.ch <- q.msgs[q.h]
-			cons.status = consBusy
+			q.subNext(cons.consID)
 
 			return
 		}
@@ -52,14 +54,7 @@ func (q *Queue[T]) Sub() (*Consumer[T], error) {
 		return nil, err
 	}
 
-	cons := &Consumer[T]{
-		consID: consID.String(),
-		ch:     make(chan *Msg[T]),
-		offset: 0,
-		status: consWait,
-		q:      q,
-	}
-
+	cons := newConsumer[T](consID.String(), q)
 	q.cons[cons.consID] = cons
 
 	err = q.subNext(cons.consID)

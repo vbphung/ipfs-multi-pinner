@@ -29,12 +29,12 @@ type Client interface {
 
 type clt struct {
 	api  *rpc.HttpApi
-	pnm  *pinningManager
+	pnm  *pinManager
 	conf *Config
 	log  *logrus.Logger
 }
 
-func NewClient(conf *Config, pns ...PinningService) (Client, error) {
+func NewClient(conf *Config, pns ...PinService) (Client, error) {
 	api, err := rpc.NewURLApiWithClient(conf.IpfsUrl, &http.Client{})
 	if err != nil {
 		return nil, err
@@ -46,15 +46,19 @@ func NewClient(conf *Config, pns ...PinningService) (Client, error) {
 		FullTimestamp: true,
 	})
 
-	pnm := newPinningManager(log, pns...)
-	pnm.do()
+	pnm, err := newPinManager(log, pns...)
+	if err != nil {
+		return nil, err
+	}
+
+	pnm.start()
 
 	return &clt{api, pnm, conf, log}, nil
 }
 
 func (c *clt) Add(ctx context.Context, r io.Reader) (*CID, error) {
 	buf := bufio.NewReader(r)
-	add, reuse := teeIoReader(buf)
+	add, reuse := teeReader(buf)
 
 	added, err := c.api.Unixfs().Add(ctx, files.NewReaderFile(add), func(uas *options.UnixfsAddSettings) error {
 		uas.CidVersion = c.conf.CIDVersion
