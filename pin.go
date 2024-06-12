@@ -34,6 +34,9 @@ type pinManager struct {
 func newPinManager(log *logrus.Logger, pns ...PinService) (*pinManager, error) {
 	q := queue.New[*action](log)
 
+	pns = sliceFilter(pns, func(pn PinService) bool {
+		return pn != nil
+	})
 	cons := make([]*consumer, len(pns))
 	for i, pn := range pns {
 		sub, err := q.Sub()
