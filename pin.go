@@ -3,21 +3,30 @@ package easipfs
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/jimmydrinkscoffee/easipfs/queue"
 	"github.com/sirupsen/logrus"
 )
 
 type action struct {
-	pin *CID
-	add io.Reader
+	pin   *CID
+	add   io.Reader
+	addMu sync.Mutex
 }
 
-func (a *action) tee() io.Reader {
+func (a *action) tee() (io.Reader, bool) {
+	a.addMu.Lock()
+	defer a.addMu.Unlock()
+
+	if a.add == nil {
+		return nil, false
+	}
+
 	res, next := teeReader(a.add)
 	a.add = next
 
-	return res
+	return res, true
 }
 
 type consumer struct {
@@ -77,18 +86,15 @@ func (m *pinManager) start() {
 }
 
 func (m *pinManager) handleAction(pn PinService, act *action) {
-	switch {
-	case act.add != nil:
-		cid, err := pn.Add(context.Background(), act.tee())
+	if r, ok := act.tee(); ok {
+		cid, err := pn.Add(context.Background(), r)
 		if err != nil {
 			m.log.Errorln(pn.Name(), err)
 			return
 		}
 
 		m.log.Infoln(pn.Name(), cid.Hash)
-		return
-
-	case act.pin != nil:
+	} else {
 		err := pn.Pin(context.Background(), act.pin)
 		if err != nil {
 			m.log.Errorln(pn.Name(), err)
@@ -96,6 +102,5 @@ func (m *pinManager) handleAction(pn PinService, act *action) {
 		}
 
 		m.log.Infoln(pn.Name(), act.pin.Hash)
-		return
 	}
 }

@@ -36,6 +36,13 @@ func (c *Consumer[T]) Sub() <-chan T {
 	return c.ch
 }
 
+func (c *Consumer[T]) state() (consumerStatus, uint64) {
+	defer c.mu.Unlock()
+	c.mu.Lock()
+
+	return c.status, c.offset
+}
+
 func (c *Consumer[T]) incOffset() {
 	defer c.mu.Unlock()
 	c.mu.Lock()

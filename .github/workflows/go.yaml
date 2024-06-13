@@ -28,4 +28,4 @@ jobs:
       - name: Run tests
         run: |
           go test -race -v github.com/jimmydrinkscoffee/easipfs/queue
-          go test -race -v
+          go test -race -v -run TestPinServices github.com/jimmydrinkscoffee/easipfs

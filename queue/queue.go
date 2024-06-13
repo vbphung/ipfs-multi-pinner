@@ -34,17 +34,12 @@ func New[T any](log *logrus.Logger) *Queue[T] {
 
 func (q *Queue[T]) Pub(event T) {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-
 	q.h++
 	q.msgs[q.h] = &Msg[T]{event, uint32(len(q.cons))}
+	q.mu.Unlock()
 
 	for _, cons := range q.cons {
-		if cons.status == consWait {
-			q.subNext(cons.consID)
-
-			return
-		}
+		q.subNext(cons.consID)
 	}
 }
 
@@ -98,7 +93,15 @@ func (q *Queue[T]) subNext(consID string) error {
 		return errors.New(consID)
 	}
 
-	for i := cons.offset + 1; i < q.h; i++ {
+	status, offset := cons.state()
+	if status == consBusy {
+		return nil
+	}
+
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	for i := offset + 1; i < q.h; i++ {
 		if msg, ok := q.msgs[i]; ok {
 			cons.sub(msg)
 
