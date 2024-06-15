@@ -101,7 +101,7 @@ func (q *Queue[T]) subNext(consID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	for i := offset + 1; i < q.h; i++ {
+	for i := offset + 1; i <= q.h; i++ {
 		if msg, ok := q.msgs[i]; ok {
 			cons.sub(msg)
 

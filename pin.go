@@ -17,7 +17,6 @@ type action struct {
 
 func (a *action) tee() (io.Reader, bool) {
 	a.addMu.Lock()
-	defer a.addMu.Unlock()
 
 	if a.add == nil {
 		return nil, false
@@ -27,6 +26,10 @@ func (a *action) tee() (io.Reader, bool) {
 	a.add = next
 
 	return res, true
+}
+
+func (a *action) unlock() {
+	a.addMu.Unlock()
 }
 
 type consumer struct {
@@ -87,6 +90,8 @@ func (m *pinManager) start() {
 
 func (m *pinManager) handleAction(pn PinService, act *action) {
 	if r, ok := act.tee(); ok {
+		defer act.unlock()
+
 		cid, err := pn.Add(context.Background(), r)
 		if err != nil {
 			m.log.Errorln(pn.Name(), err)
