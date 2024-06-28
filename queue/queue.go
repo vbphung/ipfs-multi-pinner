@@ -49,7 +49,7 @@ func (q *Queue[T]) Sub() (*Consumer[T], error) {
 		return nil, err
 	}
 
-	cons := newConsumer[T](consID.String(), q)
+	cons := newConsumer(consID.String(), q)
 	q.cons[cons.consID] = cons
 
 	err = q.subNext(cons.consID)
