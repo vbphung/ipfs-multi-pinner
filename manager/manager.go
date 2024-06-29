@@ -14,14 +14,22 @@ type consumer struct {
 	cons *queue.Consumer[*action]
 }
 
+type Manager interface {
+	core.PinService
+
+	Start(ctx context.Context)
+}
+
 type manager struct {
 	q    *queue.Queue[*action]
 	cons []*consumer
 	log  *logrus.Logger
 }
 
-func New(log *logrus.Logger, pns ...core.PinService) (core.PinService, error) {
-	q := queue.New[*action](log)
+func New(log *logrus.Logger, pns ...core.PinService) (Manager, error) {
+	q := queue.New(log, func(a *action) {
+		close(a.res)
+	})
 
 	pns = sliceFilter(pns, func(pn core.PinService) bool {
 		return pn != nil
@@ -43,7 +51,24 @@ func New(log *logrus.Logger, pns ...core.PinService) (core.PinService, error) {
 }
 
 func (m *manager) Add(ctx context.Context, r io.Reader) (*core.CID, error) {
-	panic("unimplemented")
+	act := &action{
+		add: &addAct{
+			buf: r,
+		},
+		res: make(chan *actRes),
+	}
+	m.q.Pub(act)
+
+	var err error
+	for res := range act.res {
+		if res.err == nil {
+			return res.res, nil
+		}
+
+		err = res.err
+	}
+
+	return nil, err
 }
 
 func (m *manager) Get(ctx context.Context, cid *core.CID) (io.Reader, error) {
@@ -62,19 +87,7 @@ func (m *manager) Pin(ctx context.Context, cid *core.CID) error {
 	panic("unimplemented")
 }
 
-func (m *manager) add(buf io.Reader) {
-	m.q.Pub(&action{
-		add: buf,
-	})
-}
-
-func (m *manager) pin(cid *core.CID) {
-	m.q.Pub(&action{
-		pin: cid,
-	})
-}
-
-func (m *manager) start() {
+func (m *manager) Start(ctx context.Context) {
 	for _, c := range m.cons {
 		go func(cons *consumer) {
 			for act := range cons.cons.Sub() {
@@ -86,7 +99,7 @@ func (m *manager) start() {
 }
 
 func (m *manager) handleAction(pn core.PinService, act *action) {
-	if r, ok := act.tee(); ok {
+	if r, ok := act.check(); ok {
 		defer act.unlock()
 
 		cid, err := pn.Add(context.Background(), r)
@@ -97,7 +110,7 @@ func (m *manager) handleAction(pn core.PinService, act *action) {
 
 		m.log.Infoln(pn.Name(), cid.Hash)
 	} else {
-		err := pn.Pin(context.Background(), act.pin)
+		err := pn.Pin(context.Background(), (*core.CID)(act.pin))
 		if err != nil {
 			m.log.Errorln(pn.Name(), err)
 			return

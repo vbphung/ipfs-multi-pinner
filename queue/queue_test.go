@@ -10,7 +10,11 @@ import (
 )
 
 func TestMain(t *testing.T) {
-	q := New[int](logrus.New())
+	log := logrus.New()
+
+	q := New(log, func(n int) {
+		log.Warnln(n)
+	})
 
 	cons, err := q.Sub()
 	require.NoError(t, err)

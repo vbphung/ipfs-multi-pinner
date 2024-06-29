@@ -7,25 +7,37 @@ import (
 	"github.com/jimmydrinkscoffee/easipfs/core"
 )
 
-type action struct {
-	pin   *core.CID
-	add   io.Reader
-	addMu sync.Mutex
+type addAct struct {
+	buf io.Reader
+	mu  sync.Mutex
 }
 
-func (a *action) tee() (io.Reader, bool) {
-	a.addMu.Lock()
+type pinAct core.CID
 
+type actRes struct {
+	res *core.CID
+	err error
+}
+
+type action struct {
+	add *addAct
+	pin *pinAct
+	res chan *actRes
+}
+
+func (a *action) check() (io.Reader, bool) {
 	if a.add == nil {
 		return nil, false
 	}
 
-	res, next := teeReader(a.add)
-	a.add = next
+	a.add.mu.Lock()
+
+	res, next := teeReader(a.add.buf)
+	a.add.buf = next
 
 	return res, true
 }
 
 func (a *action) unlock() {
-	a.addMu.Unlock()
+	a.add.mu.Unlock()
 }
