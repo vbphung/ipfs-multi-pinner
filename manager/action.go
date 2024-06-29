@@ -22,7 +22,7 @@ type actRes struct {
 type action struct {
 	add *addAct
 	pin *pinAct
-	res chan *actRes
+	ch  chan *actRes
 }
 
 func (a *action) check() (io.Reader, bool) {
@@ -40,4 +40,21 @@ func (a *action) check() (io.Reader, bool) {
 
 func (a *action) unlock() {
 	a.add.mu.Unlock()
+}
+
+func (a *action) done() {
+	close(a.ch)
+}
+
+func (a *action) res() (*core.CID, error) {
+	var err error
+	for r := range a.ch {
+		if r.err == nil {
+			return r.res, nil
+		}
+
+		err = r.err
+	}
+
+	return nil, err
 }
