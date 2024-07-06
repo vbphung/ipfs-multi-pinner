@@ -1,4 +1,4 @@
-package easipfs
+package manager
 
 import (
 	"bytes"

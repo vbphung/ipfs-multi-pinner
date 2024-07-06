@@ -16,19 +16,21 @@ type Msg[T any] struct {
 }
 
 type Queue[T any] struct {
-	cons map[string]*Consumer[T]
-	msgs map[uint64]*Msg[T]
-	h    uint64
-	mu   sync.Mutex
-	log  *logrus.Logger
+	cons    map[string]*Consumer[T]
+	msgs    map[uint64]*Msg[T]
+	onRmMsg func(T)
+	h       uint64
+	mu      sync.Mutex
+	log     *logrus.Logger
 }
 
-func New[T any](log *logrus.Logger) *Queue[T] {
+func New[T any](log *logrus.Logger, onRmMsg func(T)) *Queue[T] {
 	return &Queue[T]{
-		cons: make(map[string]*Consumer[T]),
-		msgs: make(map[uint64]*Msg[T]),
-		h:    0,
-		log:  log,
+		cons:    make(map[string]*Consumer[T]),
+		msgs:    make(map[uint64]*Msg[T]),
+		onRmMsg: onRmMsg,
+		h:       0,
+		log:     log,
 	}
 }
 
@@ -49,7 +51,7 @@ func (q *Queue[T]) Sub() (*Consumer[T], error) {
 		return nil, err
 	}
 
-	cons := newConsumer[T](consID.String(), q)
+	cons := newConsumer(consID.String(), q)
 	q.cons[cons.consID] = cons
 
 	err = q.subNext(cons.consID)
@@ -120,6 +122,10 @@ func (q *Queue[T]) onConsAck(offset uint64) error {
 
 	msg.cons--
 	if msg.cons == 0 {
+		if q.onRmMsg != nil {
+			q.onRmMsg(q.msgs[offset].event)
+		}
+
 		delete(q.msgs, offset)
 	}
 
