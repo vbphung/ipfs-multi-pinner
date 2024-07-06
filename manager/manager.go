@@ -123,17 +123,23 @@ func (m *manager) handleAction(pn core.PinService, act *action) {
 		cid, err := pn.Add(context.Background(), r)
 		if err != nil {
 			m.log.Errorln(pn.Name(), err)
+			act.ch <- &actRes{err: err}
+
 			return
 		}
 
 		m.log.Infoln(pn.Name(), cid.Hash)
+		act.ch <- &actRes{res: cid}
 	} else {
 		err := pn.Pin(context.Background(), (*core.CID)(act.pin))
 		if err != nil {
 			m.log.Errorln(pn.Name(), err)
+			act.ch <- &actRes{err: err}
+
 			return
 		}
 
 		m.log.Infoln(pn.Name(), act.pin.Hash)
+		act.ch <- &actRes{res: (*core.CID)(act.pin)}
 	}
 }

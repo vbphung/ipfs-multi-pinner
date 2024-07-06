@@ -43,6 +43,8 @@ func (a *action) unlock() {
 }
 
 func (a *action) done() {
+	a.add.mu.Lock()
+
 	close(a.ch)
 }
 
