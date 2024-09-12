@@ -1,13 +1,13 @@
-module github.com/jimmydrinkscoffee/easipfs
+module github.com/vbphung/easipfs
 
-go 1.22.0
+go 1.23.0
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/ipfs/boxo v0.19.0
 	github.com/ipfs/go-cid v0.4.1
 	github.com/ipfs/kubo v0.28.0
-	github.com/sirupsen/logrus v1.9.3
+	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.8.4
 )
 
@@ -58,6 +58,7 @@ require (
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
 	github.com/libp2p/go-netroute v0.2.1 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.58 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect

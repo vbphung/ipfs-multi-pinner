@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jimmydrinkscoffee/easipfs/core"
 	"github.com/stretchr/testify/require"
+	"github.com/vbphung/easipfs/core"
 )
 
 const (

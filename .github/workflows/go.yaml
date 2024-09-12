@@ -1,9 +1,9 @@
 name: Test
+
 on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
@@ -20,11 +20,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.0
+          go-version: 1.23.0
 
       - name: Install dependencies
         run: go mod download
 
       - name: Run tests
         run: |
-          go test -race -v github.com/jimmydrinkscoffee/easipfs/queue
+          go test -race -v github.com/vbphung/easipfs/queue

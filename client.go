@@ -3,9 +3,8 @@ package easipfs
 import (
 	"context"
 
-	"github.com/jimmydrinkscoffee/easipfs/core"
-	"github.com/jimmydrinkscoffee/easipfs/manager"
-	"github.com/sirupsen/logrus"
+	"github.com/vbphung/easipfs/core"
+	"github.com/vbphung/easipfs/manager"
 )
 
 type Client core.PinService
@@ -20,13 +19,7 @@ func NewClient(selfs []*core.SelfHostedConf, pns []core.PinService) (Client, err
 		pns = append(pns, pn)
 	}
 
-	log := logrus.New()
-	log.SetFormatter(&logrus.TextFormatter{
-		ForceColors:   true,
-		FullTimestamp: true,
-	})
-
-	clt, err := manager.New(log, pns...)
+	clt, err := manager.New(pns...)
 	if err != nil {
 		return nil, err
 	}

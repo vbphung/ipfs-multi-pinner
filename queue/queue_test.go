@@ -4,16 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMain(t *testing.T) {
-	log := logrus.New()
-
-	q := New(log, func(n int) {
-		log.Warnln(n)
+	q := New(func(n int) {
+		log.Warn().Int("offset", n).Msg("message removed")
 	})
 
 	cons, err := q.Sub()
@@ -24,7 +22,7 @@ func TestMain(t *testing.T) {
 			msg := <-cons.Sub()
 
 			time.Sleep(500 * time.Millisecond)
-			q.log.Println(msg)
+			log.Info().Int("offset", msg).Msg("message processed")
 
 			assert.NoError(t, cons.Ack())
 		}

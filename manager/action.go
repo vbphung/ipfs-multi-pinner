@@ -4,7 +4,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/jimmydrinkscoffee/easipfs/core"
+	"github.com/vbphung/easipfs/core"
 )
 
 type addAct struct {

@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 )
 
 type Msg[T any] struct {
@@ -21,16 +20,14 @@ type Queue[T any] struct {
 	onRmMsg func(T)
 	h       uint64
 	mu      sync.Mutex
-	log     *logrus.Logger
 }
 
-func New[T any](log *logrus.Logger, onRmMsg func(T)) *Queue[T] {
+func New[T any](onRmMsg func(T)) *Queue[T] {
 	return &Queue[T]{
 		cons:    make(map[string]*Consumer[T]),
 		msgs:    make(map[uint64]*Msg[T]),
 		onRmMsg: onRmMsg,
 		h:       0,
-		log:     log,
 	}
 }
 
