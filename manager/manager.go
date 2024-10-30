@@ -11,7 +11,7 @@ import (
 
 type consumer struct {
 	pn   core.PinService
-	cons *queue.Consumer[*action]
+	cons *queue.Consumer[action]
 }
 
 type Manager interface {
@@ -21,12 +21,12 @@ type Manager interface {
 }
 
 type manager struct {
-	q    *queue.Queue[*action]
+	q    *queue.Queue[action]
 	cons []*consumer
 }
 
 func New(pns ...core.PinService) (Manager, error) {
-	q := queue.New(func(a *action) {
+	q := queue.New(func(a action) {
 		a.done()
 	})
 
@@ -50,11 +50,11 @@ func New(pns ...core.PinService) (Manager, error) {
 }
 
 func (m *manager) Add(ctx context.Context, r io.Reader) (*core.CID, error) {
-	act := &action{
+	act := action{
 		add: &addAct{
 			buf: r,
 		},
-		ch: make(chan *actRes),
+		ch: make(chan actRes),
 	}
 	m.q.Pub(act)
 
@@ -90,9 +90,9 @@ func (m *manager) Name() string {
 }
 
 func (m *manager) Pin(ctx context.Context, cid *core.CID) error {
-	act := &action{
+	act := action{
 		pin: (*pinAct)(cid),
-		ch:  make(chan *actRes),
+		ch:  make(chan actRes),
 	}
 	m.q.Pub(act)
 
@@ -115,30 +115,30 @@ func (m *manager) Start(ctx context.Context) {
 	}
 }
 
-func (m *manager) handleAction(pn core.PinService, act *action) {
+func (m *manager) handleAction(pn core.PinService, act action) {
 	if r, ok := act.check(); ok {
 		defer act.unlock()
 
 		cid, err := pn.Add(context.Background(), r)
 		if err != nil {
 			log.Err(err).Msg(pn.Name())
-			act.ch <- &actRes{err: err}
+			act.publish(actRes{err: err})
 
 			return
 		}
 
 		log.Info().Str("name", pn.Name()).Str("hash", cid.Hash).Send()
-		act.ch <- &actRes{res: cid}
+		act.publish(actRes{res: cid})
 	} else {
 		err := pn.Pin(context.Background(), (*core.CID)(act.pin))
 		if err != nil {
 			log.Err(err).Msg(pn.Name())
-			act.ch <- &actRes{err: err}
+			act.publish(actRes{err: err})
 
 			return
 		}
 
 		log.Info().Str("name", pn.Name()).Str("hash", act.pin.Hash).Send()
-		act.ch <- &actRes{res: (*core.CID)(act.pin)}
+		act.publish(actRes{res: (*core.CID)(act.pin)})
 	}
 }
