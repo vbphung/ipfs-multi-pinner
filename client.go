@@ -2,6 +2,8 @@ package easipfs
 
 import (
 	"context"
+	"maps"
+	"slices"
 
 	"github.com/vbphung/easipfs/core"
 	"github.com/vbphung/easipfs/manager"
@@ -18,6 +20,13 @@ func NewClient(selfs []*core.SelfHostedConf, pns []core.PinService) (Client, err
 
 		pns = append(pns, pn)
 	}
+
+	m := make(map[string]core.PinService)
+	for _, pn := range pns {
+		m[pn.Name()] = pn
+	}
+
+	pns = slices.Collect(maps.Values(m))
 
 	clt, err := manager.New(pns...)
 	if err != nil {
