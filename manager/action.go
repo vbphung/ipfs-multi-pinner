@@ -4,7 +4,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/vbphung/easipfs/core"
+	"github.com/vbphung/ipfs-multi-pinner/core"
 )
 
 type addAct struct {

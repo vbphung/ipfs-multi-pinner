@@ -5,8 +5,8 @@ import (
 	"io"
 
 	"github.com/rs/zerolog/log"
-	"github.com/vbphung/easipfs/core"
-	"github.com/vbphung/easipfs/queue"
+	"github.com/vbphung/ipfs-multi-pinner/core"
+	"github.com/vbphung/ipfs-multi-pinner/queue"
 )
 
 type consumer struct {

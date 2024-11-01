@@ -5,8 +5,8 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/vbphung/easipfs/core"
-	"github.com/vbphung/easipfs/manager"
+	"github.com/vbphung/ipfs-multi-pinner/core"
+	"github.com/vbphung/ipfs-multi-pinner/manager"
 )
 
 type Client core.PinService

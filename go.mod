@@ -1,4 +1,4 @@
-module github.com/vbphung/easipfs
+module github.com/vbphung/ipfs-multi-pinner
 
 go 1.23.2
 

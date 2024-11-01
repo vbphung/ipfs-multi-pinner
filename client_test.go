@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/vbphung/easipfs/core"
+	"github.com/vbphung/ipfs-multi-pinner/core"
 )
 
 type testPinningService struct {
