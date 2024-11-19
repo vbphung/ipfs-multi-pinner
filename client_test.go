@@ -87,7 +87,7 @@ func (t *testPinningService) Pin(ctx context.Context, cid *core.CID) error {
 	return nil
 }
 
-func TestAll(t *testing.T) {
+func TestMain(t *testing.T) {
 	s := make([]core.PinService, 3)
 	for i := range 3 {
 		s[i] = newTestPinningService(genString(t, 12))
