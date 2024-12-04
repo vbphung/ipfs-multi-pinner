@@ -1,4 +1,4 @@
-package easipfs
+package ipfsmultipinner
 
 import (
 	"bytes"

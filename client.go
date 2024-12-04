@@ -1,7 +1,9 @@
-package easipfs
+package ipfsmultipinner
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"maps"
 	"slices"
 
@@ -15,10 +17,14 @@ func NewClient(selfs []*core.SelfHostedConf, pns []core.PinService) (Client, err
 	for _, conf := range selfs {
 		pn, err := core.NewSelfHostedService(conf)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("connect self-hosted: %v", err)
 		}
 
 		pns = append(pns, pn)
+	}
+
+	if len(pns) == 0 {
+		return nil, errors.New("there are no services")
 	}
 
 	m := make(map[string]core.PinService)
@@ -30,7 +36,7 @@ func NewClient(selfs []*core.SelfHostedConf, pns []core.PinService) (Client, err
 
 	clt, err := manager.New(pns...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create manager: %v", err)
 	}
 
 	clt.Start(context.Background())

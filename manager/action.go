@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"errors"
 	"io"
 	"sync"
 
@@ -52,31 +53,21 @@ func (a *action) done() {
 }
 
 func (a *action) res() (*core.CID, error) {
-	ch := make(chan actRes)
+	var res actRes
 
-	go func() {
-		defer close(ch)
-		var (
-			err     error
-			success = false
-		)
-		for {
-			r, ok := <-a.ch
-			if !ok {
-				break
-			}
-
-			if r.err == nil && !success {
-				success = true
-				ch <- actRes{r.res, nil}
-			} else if err == nil {
-				err = r.err
-			}
+	for r := range a.ch {
+		if r.res != nil {
+			res.res = r.res
 		}
 
-		ch <- actRes{nil, err}
-	}()
+		if r.err != nil {
+			res.err = errors.Join(res.err, r.err)
+		}
+	}
 
-	r := <-ch
-	return r.res, r.err
+	if res.res != nil {
+		return res.res, nil
+	}
+
+	return nil, res.err
 }
